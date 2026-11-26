@@ -9,7 +9,36 @@ const LINKS = {
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const COL = { s1: '#2a78d6', s2: '#eb6834', s3: '#1baf7a', neutral: '#8a93a6', ink: '#0d1321', ink2: '#475066', muted: '#7a8396', hair: '#e3e7ee' };
+// chart colours follow the theme: read from the CSS tokens before every draw
+const COL = {};
+function refreshColors() {
+  const st = getComputedStyle(document.documentElement), g = n => st.getPropertyValue(n).trim();
+  Object.assign(COL, { s1: g('--s1'), s2: g('--s2'), s3: g('--s3'), neutral: g('--neutral'), ink: g('--ink'), ink2: g('--ink2'),
+    muted: g('--muted'), hair: g('--hair'), surface: g('--chart-surface') });
+}
+refreshColors();
+
+// ---- background orbs: each follows its own loop as the page scrolls (eased), and breathes on its own (CSS)
+const ORBS = [   // centre (vw, vh), radius of its path (vw, vh), turns per page, phase
+  [14, 20, 14, 24, 1.0, 0.00], [86, 12, 12, 28, 0.8, 0.30], [58, 86, 22, 18, 1.2, 0.55],
+  [6, 74, 16, 22, 0.9, 0.75], [80, 64, 18, 22, 1.1, 0.15], [42, 38, 24, 26, 0.7, 0.45]];
+const orbEls = $$('.orb');
+let pNow = 0, pGoal = 0, orbRaf = 0;
+function placeOrbs() {
+  pNow += (pGoal - pNow) * 0.07;
+  orbEls.forEach((o, i) => {
+    const [x, y, ax, ay, f, ph] = ORBS[i], a = 2 * Math.PI * (f * pNow * 1.5 + ph);
+    o.style.transform = `translate(${(x + ax * Math.sin(a)).toFixed(2)}vw, ${(y + ay * Math.cos(a)).toFixed(2)}vh) scale(${(1 + 0.18 * Math.sin(a * 0.7 + i)).toFixed(3)})`;
+  });
+  orbRaf = Math.abs(pGoal - pNow) > 0.0004 ? requestAnimationFrame(placeOrbs) : 0;
+}
+function orbScroll() {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  pGoal = max > 0 ? scrollY / max : 0;
+  if (!orbRaf) orbRaf = requestAnimationFrame(placeOrbs);
+}
+pNow = -0.0001; orbScroll();
+if (!reduce) addEventListener('scroll', orbScroll, { passive: true });
 
 $$('[data-link]').forEach(a => {
   const url = LINKS[a.dataset.link];
@@ -112,8 +141,8 @@ function drawDumbbell() {
     s += `<rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`;
     s += `<text x="${left - 12}" y="${y + 4}" font-size="13" text-anchor="end" fill="${COL.ink}" font-weight="${ours ? 700 : 500}">${at(name)}</text>`;
     s += `<line class="db" x1="${x(a)}" x2="${x(b)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
-    s += `<circle cx="${x(a)}" cy="${y}" r="5.5" fill="#fff" stroke="${c}" stroke-width="2"/>`;
-    s += `<circle class="dbend" cx="${x(b)}" cy="${y}" r="5.5" fill="${c}" stroke="#fff" stroke-width="2"/>`;
+    s += `<circle cx="${x(a)}" cy="${y}" r="5.5" fill="${COL.surface}" stroke="${c}" stroke-width="2"/>`;
+    s += `<circle class="dbend" cx="${x(b)}" cy="${y}" r="5.5" fill="${c}" stroke="${COL.surface}" stroke-width="2"/>`;
     const lx = Math.max(x(a), x(b)) + 10, label = Math.abs(b - a) < 0.005 ? `${a.toFixed(2)}, unchanged` : `${a.toFixed(2)} → ${b.toFixed(2)}`;
     s += `<text x="${Math.min(lx, W - right)}" y="${y - 10}" font-size="11.5" fill="${COL.ink2}" text-anchor="${lx > W - 120 ? 'end' : 'start'}">${label}</text>`;
     s += `</g>`;
@@ -141,8 +170,8 @@ function drawPlace() {
     s += `<g data-tip="${tipTxt}" tabindex="0"><rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`;
     s += `<text x="${left - 12}" y="${y + 4}" font-size="13" text-anchor="end" fill="${COL.ink}">${name}</text>`;
     if (r !== undefined) s += `<line x1="${x(Math.min(l, r))}" x2="${x(Math.max(l, r))}" y1="${y}" y2="${y}" stroke="${COL.s3}" stroke-width="2"/>`;
-    s += `<circle cx="${x(l)}" cy="${y}" r="6" fill="${COL.s3}" stroke="#fff" stroke-width="2"/>`;
-    if (r !== undefined) s += `<circle cx="${x(r)}" cy="${y}" r="5.5" fill="#fff" stroke="${COL.s3}" stroke-width="2"/>`;
+    s += `<circle cx="${x(l)}" cy="${y}" r="6" fill="${COL.s3}" stroke="${COL.surface}" stroke-width="2"/>`;
+    if (r !== undefined) s += `<circle cx="${x(r)}" cy="${y}" r="5.5" fill="${COL.surface}" stroke="${COL.s3}" stroke-width="2"/>`;
     if (name === 'Hand' || name === 'Head') s += `<text x="${x(Math.max(l, r || 0)) + 12}" y="${y + 4}" font-size="11.5" fill="${COL.ink2}">${name === 'Hand' ? '85.8 / 87.3%' : '98.9%'}</text>`;
     s += `</g>`;
   });
@@ -175,7 +204,7 @@ function drawHar() {
     for (let g = 0; g <= 100; g += 20) s += `<line x1="${left}" x2="${W - right}" y1="${y(g)}" y2="${y(g)}" stroke="${COL.hair}"/><text x="${left - 8}" y="${y(g) + 4}" font-size="11" fill="${COL.muted}" text-anchor="end">${g}</text>`;
     HAR.sets.forEach((name, i) => {
       const gx = left + gw * i, x0 = gx + (gw - (bw * S + 2 * (S - 1))) / 2, mean = name === 'Mean';
-      if (mean) s += `<rect x="${gx + 2}" y="${top}" width="${gw - 4}" height="${H - top - bottom}" rx="8" fill="#eef7f3"/>`;
+      if (mean) s += `<rect x="${gx + 2}" y="${top}" width="${gw - 4}" height="${H - top - bottom}" rx="8" fill="rgba(27,175,122,.10)"/>`;
       s += `<g data-tip="${groupTip(i).replace(/"/g, '&quot;')}" tabindex="0"><rect x="${gx}" y="${top}" width="${gw}" height="${H - top - bottom}" fill="transparent"/>`;
       HAR.series.forEach(([sn, c, v], k) => {
         const bx = x0 + k * (bw + 2), by = y(v[i]);
@@ -233,3 +262,17 @@ let lastW = 0;
 const redraw = () => { const w = $('#harChart').clientWidth; if (Math.abs(w - lastW) < 2) return; lastW = w; drawHar(); drawPlace(); };
 redraw();
 new ResizeObserver(redraw).observe($('#harChart'));
+
+// ---- dark / light theme (choice kept in localStorage; charts read their colours from the CSS tokens)
+const themeBtn = $('#themeBtn');
+function setTheme(t, save) {
+  document.documentElement.dataset.theme = t;
+  const next = t === 'light' ? 'dark' : 'light';
+  themeBtn.setAttribute('aria-label', `Switch to ${next} mode`);
+  themeBtn.title = `Switch to ${next} mode`;
+  if (save) { try { localStorage.setItem('hit-theme', t); } catch (e) {} }
+  refreshColors(); lastW = 0; redraw(); drawDumbbell();
+  dispatchEvent(new Event('hit-theme'));            // the 3D and caption demos repaint
+}
+setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', false);
+themeBtn.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light', true));

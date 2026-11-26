@@ -7,9 +7,11 @@
 <meta name="description" content="HiT estimates full-body pose, finds where each sensor is worn and describes the motion in language, from any body-worn IMUs, without calibration or placement labels.">
 <meta property="og:title" content="HiT: Human Inertial Transformer">
 <meta property="og:description" content="Full-body pose, sensor placement and language from any body-worn IMUs, without calibration or placement labels.">
-<meta property="og:image" content="https://shacozha.github.io/hit/static/img/teaser.jpg">
-<meta property="og:url" content="https://shacozha.github.io/hit/">
-<link rel="canonical" href="https://shacozha.github.io/hit/">
+<meta property="og:image" content="https://spice-lab.org/projects/HiT/static/img/teaser.jpg">
+<meta property="og:url" content="https://spice-lab.org/projects/HiT/">
+<link rel="canonical" href="https://spice-lab.org/projects/HiT/">
+<meta name="color-scheme" content="dark light">
+<script>try { var t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('hit-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1224'/%3E%3Cpath d='M14 46V18h6v11h10V18h6v28h-6V34H20v12z' fill='%2334d399'/%3E%3Ccircle cx='45' cy='20' r='4' fill='%2360a5fa'/%3E%3Cpath d='M42 28h6v18h-6z' fill='%2360a5fa'/%3E%3C/svg%3E">
@@ -19,6 +21,10 @@
 <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
+<div class="bg" aria-hidden="true">
+  <i class="orb o1"><b></b></i><i class="orb o2"><b></b></i><i class="orb o3"><b></b></i>
+  <i class="orb o4"><b></b></i><i class="orb o5"><b></b></i><i class="orb o6"><b></b></i>
+</div>
 
 <nav class="nav" id="nav" aria-label="Sections">
   <div class="nav-in">
@@ -32,11 +38,14 @@
       <a href="#language">Language</a>
       <a href="#bibtex">BibTeX</a>
     </div>
+    <button class="theme" id="themeBtn" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+      <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.3M12 19.2v2.3M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.3M19.2 12h2.3M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8z" fill="currentColor"/></svg>
+    </button>
   </div>
 </nav>
 
 <header class="hero" id="top">
-  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
   <div class="hero-in">
     <div class="hero-text">
       <p class="eyebrow">Body-worn IMUs &middot; pose &middot; placement &middot; language</p>
@@ -172,20 +181,33 @@
         <p class="note" id="dumbNote"></p>
       </div>
     </div>
-    <div class="gallery">
-      <h3>Frames from the test set</h3>
-      <p class="note" style="margin:0 0 14px">The same IMUPoser test frames, with calibrated inputs (left) and with every device turned
-        on the body (right). Numbers under each pose: per-frame error.</p>
-      <div class="pair">
-        <figure class="fig-card">
-          <img src="static/img/qual_imuposer_cal.jpg" alt="IMUPoser test frames with calibrated inputs: MobilePoser, ProbIP, IMU4D, HiT and the ground truth, with the per-frame error under each pose." loading="lazy">
-          <figcaption>Calibrated inputs</figcaption>
-        </figure>
-        <figure class="fig-card">
-          <img src="static/img/qual_imuposer_uncal.jpg" alt="The same frames without calibration: the baselines' poses break, HiT's stay close to the ground truth." loading="lazy">
-          <figcaption>Without calibration</figcaption>
-        </figure>
+    <div class="pose3d" id="pose3d">
+      <div class="p3-head">
+        <div>
+          <h3>Test recordings, frame by frame</h3>
+          <p class="note">The number under each body is its error in the frame on screen (MPJPE, cm). Drag the timeline to scrub.</p>
+        </div>
+        <div class="p3-controls">
+          <div class="seg" role="group" aria-label="Inputs">
+            <button type="button" data-set="cal" aria-pressed="true">Calibrated</button>
+            <button type="button" data-set="uncal" aria-pressed="false">Without calibration</button>
+          </div>
+          <label class="sel"><span class="sr">Recording</span><select id="p3Rec" aria-label="Recording"></select></label>
+        </div>
       </div>
+      <div class="p3-stage" id="p3Stage">
+        <video id="p3Video" muted loop playsinline preload="auto" aria-label="SMPL bodies replaying the selected recording: MobilePoser, ProbIP, IMU4D, HiT and the ground truth"></video>
+      </div>
+      <div class="p3-labels" id="p3Labels" aria-live="off"></div>
+      <div class="p3-time">
+        <button type="button" class="playbtn" id="p3Play" aria-label="Pause">
+          <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        </button>
+        <div class="p3-track" id="p3Track" role="slider" tabindex="0" aria-label="Time in the recording" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        <span class="p3-clock" id="p3Clock">0.0 s</span>
+      </div>
+      <p class="note" id="p3Note"></p>
     </div>
   </div>
 </section>
@@ -197,11 +219,13 @@
     <p class="intro">HiT is never told where a sensor is worn, yet it names the body segment of 93.6% of the sensors on the 168
       unseen Nymeria test sequences, with one to six sensors per window, each moved around its segment and remounted as in
       training. Hover a point for its value.</p>
-    <div id="placeChart" class="chart wide" role="img"></div>
-    <div class="legend" aria-hidden="true">
-      <span><i class="dot solid acc"></i>Left</span>
-      <span><i class="dot hollow acc"></i>Right</span>
-      <span><i class="line dash"></i>All sensors: 93.6%</span>
+    <div class="chart-panel">
+      <div id="placeChart" class="chart wide" role="img"></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot solid acc"></i>Left</span>
+        <span><i class="dot hollow acc"></i>Right</span>
+        <span><i class="line dash"></i>All sensors: 93.6%</span>
+      </div>
     </div>
     <p class="note">Most errors are neighbours: a hand read as its forearm, or the left foot and lower leg confused with the right.</p>
   </div>
@@ -213,16 +237,18 @@
     <h2>Activities it was never trained on</h2>
     <p class="intro">Trained only on Nymeria, HiT recognizes the activities of ten public datasets from their class names alone,
       with whatever sensors each dataset has, and without being told where they are worn.</p>
-    <div class="chart-head">
-      <div class="legend" aria-hidden="true">
-        <span><i class="sw s2"></i>UniMTS</span>
-        <span><i class="sw s1"></i>AnyMo</span>
-        <span><i class="sw s3"></i>HiT (ours)</span>
+    <div class="chart-panel">
+      <div class="chart-head">
+        <div class="legend" aria-hidden="true">
+          <span><i class="sw s2"></i>UniMTS</span>
+          <span><i class="sw s1"></i>AnyMo</span>
+          <span><i class="sw s3"></i>HiT (ours)</span>
+        </div>
+        <button class="link-btn" id="harTableBtn" aria-expanded="false" aria-controls="harTable">Show as table</button>
       </div>
-      <button class="link-btn" id="harTableBtn" aria-expanded="false" aria-controls="harTable">Show as table</button>
+      <div id="harChart" class="chart wide" role="img"></div>
+      <div id="harTable" class="table-wrap" hidden></div>
     </div>
-    <div id="harChart" class="chart wide" role="img"></div>
-    <div id="harTable" class="table-wrap" hidden></div>
     <p class="note">Accuracy (%) on each test set; chance ranges from 25% (Opportunity, 4 classes) to 3.7% (UTD-MHAD, 27 classes).
       With full-shot fine-tuning HiT reaches 92.5% on average.</p>
   </div>
@@ -234,6 +260,28 @@
     <h2>Motion, described in words</h2>
     <p class="intro">The same frozen body model retrieves the matching narration among candidates and writes its own caption,
       also on Ego-Exo4D, a dataset it never saw.</p>
+    <div class="capdemo" id="capdemo">
+      <div class="cap-head">
+        <div>
+          <h3>Captions on Ego-Exo4D from the head IMU alone</h3>
+          <p class="note">Zero-shot: HiT never saw Ego-Exo4D. Each example is one 5 s test window from the paper's figure; the model
+            reads the glasses' IMU, then writes. Shaded words also appear in the reference narration.</p>
+        </div>
+        <div class="tabs cap-tabs" id="capTabs" role="tablist" aria-label="Caption examples"></div>
+      </div>
+      <div class="cap-body">
+        <div class="cap-signal">
+          <div class="cap-sig-head"><span>Head IMU (Aria glasses)</span>
+            <span class="axes" aria-hidden="true"><i class="ax ax-x">x</i><i class="ax ax-y">y</i><i class="ax ax-z">z</i></span></div>
+          <canvas id="capCanvas" aria-label="Accelerometer and gyroscope signal of the window"></canvas>
+          <div class="cap-status" id="capStatus" aria-live="polite"></div>
+        </div>
+        <div class="cap-text" id="capText"></div>
+      </div>
+      <div class="cap-foot">
+        <button type="button" class="link-btn" id="capReplay">Replay</button>
+      </div>
+    </div>
     <div class="lang-grid">
       <div class="metric-list">
         <div class="metric"><span class="m-name">Retrieval MRR, Nymeria held-out, 100 candidates</span>
@@ -249,10 +297,6 @@
         <div class="legend" aria-hidden="true"><span><i class="sw s1"></i>AnyMo</span><span><i class="sw s3"></i>HiT (ours)</span></div>
         <p class="note">IMU&rarr;text direction; bars share one scale per row.</p>
       </div>
-      <figure class="fig-card">
-        <a href="static/img/caption_examples_egoexo.jpg" target="_blank" rel="noopener" title="Open full size"><img src="static/img/caption_examples_egoexo.jpg" alt="Zero-shot captions on Ego-Exo4D: the head IMU signal, the reference narration and the captions of AnyMo, IMU4D and HiT." loading="lazy"></a>
-        <figcaption>Zero-shot captions on Ego-Exo4D from the head IMU alone (click to enlarge).</figcaption>
-      </figure>
     </div>
   </div>
 </section>
@@ -280,5 +324,7 @@
 </footer>
 
 <script src="static/js/main.js"></script>
+<script src="static/js/captions.js"></script>
+<script src="static/js/posevid.js"></script>
 </body>
 </html>
